@@ -1,29 +1,32 @@
 package api
 
 import (
-	"github.com/khv1one/go-url-shortener/internal/clients"
-	"github.com/khv1one/go-url-shortener/internal/handlers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
 
-type Server struct {
+type ShortenerHandler interface {
+	GetShortLink(echo.Context) error
+	CreateShortLink(echo.Context) error
+}
+
+type Router struct {
 	*echo.Echo
 }
 
-func NewServer(redisClient clients.RedisClient) Server {
-	server := Server{echo.New()}
+func NewRouter(shortenerHandler ShortenerHandler) Router {
+	router := Router{echo.New()}
 
 	// Middleware
-	server.Use(middleware.Logger())
-	server.Use(middleware.Recover())
+	router.Use(middleware.Logger())
+	router.Use(middleware.Recover())
 
-	server.RoutingShortenerApi(handlers.ShortenerHandler{RedisClient: redisClient})
+	router.RoutingShortenerApi(shortenerHandler)
 
-	return server
+	return router
 }
 
-func (s Server) RoutingShortenerApi(handler handlers.ShortenerHandler) {
+func (s Router) RoutingShortenerApi(handler ShortenerHandler) {
 	s.GET("/link", handler.GetShortLink)
 	s.POST("/link", handler.CreateShortLink)
 }

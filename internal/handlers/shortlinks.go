@@ -2,16 +2,31 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
-	"math/rand"
 	"net/http"
+	"time"
 
-	"github.com/khv1one/go-url-shortener/internal/clients"
 	"github.com/labstack/echo/v4"
 )
 
+type InMemoryStore interface {
+	SetIfNotExist(string, interface{}, time.Duration) error
+	GetByKey(string) (string, error)
+}
+
+type LinkGenerator interface {
+	Generate() string
+}
+
 type ShortenerHandler struct {
-	RedisClient clients.RedisClient
+	store     InMemoryStore
+	generator LinkGenerator
+}
+
+func NewShortenerHandler(store InMemoryStore, generator LinkGenerator) ShortenerHandler {
+	return ShortenerHandler{
+		store:     store,
+		generator: generator,
+	}
 }
 
 func (s ShortenerHandler) CreateShortLink(c echo.Context) error {
@@ -25,8 +40,8 @@ func (s ShortenerHandler) CreateShortLink(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	r := fmt.Sprintf("link_%d", rand.Intn(100))
-	_, err = s.RedisClient.SetNX(r, link, 0).Result()
+	r := s.generator.Generate()
+	err = s.store.SetIfNotExist(r, link, time.Minute)
 	if err != nil {
 		return err
 	}
@@ -36,7 +51,7 @@ func (s ShortenerHandler) CreateShortLink(c echo.Context) error {
 
 func (s ShortenerHandler) GetShortLink(c echo.Context) error {
 	link := c.QueryParam("link")
-	val, err := s.RedisClient.Get(link).Result()
+	val, err := s.store.GetByKey(link)
 	if err != nil {
 		return err
 	}

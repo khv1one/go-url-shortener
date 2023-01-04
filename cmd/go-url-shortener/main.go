@@ -1,13 +1,7 @@
 package main
 
-import (
-	"github.com/khv1one/go-url-shortener/internal/api"
-	"github.com/khv1one/go-url-shortener/internal/clients"
-)
-
 func main() {
-	redisClient := clients.NewRedisClient()
-	server := api.NewServer(redisClient)
+	app := InitializeApp()
 
-	server.Logger.Fatal(server.Start(":8888"))
+	app.Logger.Fatal(app.Start(":8888"))
 }
